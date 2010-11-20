@@ -16,7 +16,7 @@ public class GnuGoService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		Toast.makeText(this, "GnuGo Service created...", Toast.LENGTH_LONG).show();
+		Toast.makeText(this, "GnuGo 3.8 Service created...", Toast.LENGTH_LONG).show();
         System.loadLibrary ("gnuGo-3.8");
 		GnuGoConnection.initGTP(8);
 	}
@@ -32,7 +32,6 @@ public class GnuGoService extends Service {
 	
 		@Override
 		public String processGTP(String command) throws RemoteException  {
-			
 			return GnuGoConnection.playGTP(command);
 		}
 	};
