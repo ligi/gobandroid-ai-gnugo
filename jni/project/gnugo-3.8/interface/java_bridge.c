@@ -8,7 +8,7 @@ char gtp_input_line[100];
 char gtp_output_line[GTP_BUFSIZE*2];
 
 void
-Java_org_ligi_gobandroid_ai_gnugo_GnuGoConnection_initGTP (
+Java_org_ligi_gobandroidhd_ai_gnugo_GnuGoConnection_initGTP (
 	JNIEnv*	env,
 	jclass clasz,
 	jfloat memory
@@ -18,7 +18,7 @@ Java_org_ligi_gobandroid_ai_gnugo_GnuGoConnection_initGTP (
 }
 
 jstring
-Java_org_ligi_gobandroid_ai_gnugo_GnuGoConnection_playGTP (
+Java_org_ligi_gobandroidhd_ai_gnugo_GnuGoConnection_playGTP (
 	JNIEnv*	env,
 	jclass clasz,
 	jstring input

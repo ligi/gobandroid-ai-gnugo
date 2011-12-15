@@ -14,9 +14,9 @@
 						  
       <application android:icon="@drawable/icon" android:label="@string/app_name">
         
-	<service android:name="org.ligi.gobandroid_hd.ai.gnugo.GnuGoService">
+	<service android:name="org.ligi.gobandroidhd.ai.gnugo.GnuGoService">
 	  <intent-filter>
-	    <action android:name="org.ligi.gobandroid.ai.gnugo.GnuGoService" />
+	    <action android:name="org.ligi.gobandroidhd.ai.gnugo.GnuGoService" />
 	  </intent-filter>
 	</service>
 
