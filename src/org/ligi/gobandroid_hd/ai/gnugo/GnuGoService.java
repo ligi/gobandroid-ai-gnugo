@@ -1,4 +1,6 @@
-package org.ligi.gobandroid.ai.gnugo;
+package org.ligi.gobandroid_hd.ai.gnugo;
+
+import org.ligi.gobandroid_hd.ai.gnugo.IGnuGoService;
 
 import android.app.Service;
 import android.content.Intent;
