@@ -1,0 +1,92 @@
+New in 3.8 (since 3.6)
+
+- many small improvements and tuning since 3.6
+- experimental Monte Carlo mode (9x9 only)
+- support for tiny boards
+- GPL v3
+
+New in 3.6 (since 3.4)
+
+- stronger than 3.4
+- many small improvements
+- GNU Go can now resign games
+- emacs mode can display the board graphically using xpms
+- basic knowledge of how to break out of mirror go
+
+New in 3.4 (since 3.2)
+
+- stronger than 3.2
+- new connection and semeai modules use lookahead
+- new break-in code
+- improvements to many parts of the program
+
+New in 3.2 (since 3.0)
+
+- stronger than 3.0
+- uses less RAM than 3.0
+- 1-dimensional board
+- experimental dynamic connection analysis
+- experimental reading semeai module
+- new influence function
+- stronger and more agressive
+- reads to find combinations
+- revised Zobrist hashing
+- new html views of the regressions, and many more tests
+
+New in 3.0 (since 2.6)
+
+- stronger than 2.6
+- new move generation scheme
+- new influence function
+- more accurate reading
+- board information maintained incrementally during reading
+- new "owl" and "life" modules for accurate life and death analysis
+- persistent caching of reading and owl results for speed
+- revised semeai module
+- experimental Deterministic Finite State Automaton (DFA) pattern matcher
+- new debugging tools
+- level option
+
+New in 2.6 (since 2.4)
+
+- stronger than 2.4
+- more portable code
+- Texinfo documentation
+- Emacs mode
+
+New in 2.4 (since 2.0)
+
+Enhancements for the user:
+
+- stronger: able to give GNU Go 2.0 a 5 stone handicap
+  - life and death evaluation drastically improved
+  - more efficient and accurate reading
+  - (small) joseki database
+  - takes influence and territory into account
+- Ascii interface as an alternative to CGoban
+- uses GNU configure
+- undo supported
+- man page
+
+Enhancements for the developer:
+
+- expanded pattern database
+- autohelpers for patterns
+- joseki library in Smart Go Format
+- fuseki module
+- backfilling and numerous other improvements to reading code
+- algorithms for estimating territory and influence
+- eye_finder module uses a static algorithm for life and death
+- eyeshape database
+- connection database
+- reading code uses Zobrist hashing and other speedups
+- greater modularity
+- documentation of key algorithms
+- expanded support for Smart Go Format
+- various debugging tools
+
+
+
+
+
+

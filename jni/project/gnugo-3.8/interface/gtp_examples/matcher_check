@@ -1,0 +1,729 @@
+#! /usr/bin/perl -w
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# This program is distributed with GNU Go, a Go program.            #
+#                                                                   #
+# Write gnugo@gnu.org or see http://www.gnu.org/software/gnugo/     #
+# for more information.                                             #
+#                                                                   #
+# Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007    #
+# 2008 and 2009 by the Free Software Foundation.                    #
+#                                                                   #
+# This program is free software; you can redistribute it and/or     #
+# modify it under the terms of the GNU General Public License       #
+# as published by the Free Software Foundation - version 3,         #
+# or (at your option) any later version.                            #
+#                                                                   #
+# This program is distributed in the hope that it will be           #
+# useful, but WITHOUT ANY WARRANTY; without even the implied        #
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR           #
+# PURPOSE.  See the GNU General Public License in file COPYING      #
+# for more details.                                                 #
+#                                                                   #
+# You should have received a copy of the GNU General Public         #
+# License along with this program; if not, write to the Free        #
+# Software Foundation, Inc., 51 Franklin Street, Fifth Floor,       #
+# Boston, MA 02111, USA.                                            #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#
+# matcher_check info:
+#
+# Plays one gtp program against itself or lets it analzye a saved .sgf-file,
+# and watches for bad status transitions.
+#
+# FIXME: if the vertex by which a dragon is named ever changes,
+# the hash table used will consider it new.  therefore, if the
+# vertex changes at the same time an illegal state change occurs,
+# it will get missed.  Also, it is possible that a dragon would
+# be captured, and that vertex go unused until a new piece was
+# played in that spot, resulting in a false positive.  However,
+# this should be rare (?).
+
+package TWOGTP_A;
+
+use IPC::Open2;
+use Getopt::Long;
+use FileHandle;
+use strict;
+use warnings;
+use Carp;
+
+STDOUT->autoflush(1);
+
+#following added globally to allow "use strict" :
+my $vertex;
+my $first;
+my $sgfmove;
+my $sgffilename;
+my $pidp;
+my $sgffile;
+my $handicap_stones;
+my $result;
+my @vertices;
+my $second;
+my %game_list;
+#end of "use strict" repairs
+
+my $program;
+my $size = 19;
+my $verbose = 0;
+my $komi = 5.5;
+my $handicap = 0;
+my $games = 1;
+my $wanthelp;
+
+#added for matcher_check
+my %match_hist;
+my $loadfile;
+my $movenum;
+my $movecount;
+my $move;
+my $toplay;
+my $randseed;
+my $stable;
+my $pids;
+my $stable_move = "";
+my $noilcheck;
+my $color;
+
+my $helpstring = "
+
+Run with:
+
+matchercheck --program \'<path to program> --mode gtp [program options]\' \\
+       [matcher_check options]
+
+Possible matcher_check options:
+
+  --verbose 1 (to list moves) or --verbose 2 (to draw board)
+  --komi <amount>
+  --handicap <amount>
+  --size <board size>                     (default 19)
+  --games <number of games to play>       (-1 to play forever)
+  --sgffile <filename>			  (file to save games as)
+  --loadsgf <filename>			  (file to analyze)
+  --movecount <number of moves to check>
+  --randseed <number>			  (sets the random seed)
+  --stable \'<path to stable version> --mode gtp [program options]\'
+  --noilcheck				  (turns off illegal transition checks)
+  --color <color>		          (only replay for color; has no effect
+  					   without --noilcheck and --loadsgf)
+  --help                                  (show this)
+
+
+";
+
+GetOptions(
+           "program|p=s"            => \$program,
+           "verbose|v=i"            => \$verbose,
+           "komi|k=f"               => \$komi,
+           "handicap|h=i"           => \$handicap,
+           "size|boardsize|s=i"     => \$size,
+           "sgffile|o=s"            => \$sgffilename,
+	   "loadsgf|l=s"	    => \$loadfile,
+           "games=i"                => \$games,
+	   "movecount=i"	    => \$movecount,
+	   "randseed=i"		    => \$randseed,
+	   "stable=s"		    => \$stable,
+	   "noilcheck"		    => \$noilcheck,
+	   "color=s"		    => \$color,
+           "help"                   => \$wanthelp,
+);
+
+if ($wanthelp) {
+    print $helpstring;
+    exit;
+}
+
+
+if (!$program) {
+    $program = '../gnugo --mode gtp --quiet';
+    warn "Defaulting program to: $program\n";
+}
+
+if (defined($color) and (!defined($noilcheck) or !defined($loadfile))) {
+    print "Error: --color requires --noilcheck and --loadsgf";
+    exit;
+}
+
+
+# create FileHandles
+my $prog_in  = new FileHandle;		# stdin of program
+my $prog_out = new FileHandle;		# stdout of program
+my $stable_in  = new FileHandle;	# stdin of stable version
+my $stable_out = new FileHandle;	# stdout of stable version
+
+
+if ($loadfile)
+{
+    #we need to analyze an sgf file
+    if (not defined $movecount) {
+	print "Error: When analyzing an sgf file with --loadsgf <filename>, you also need to
+specify the number of moves to check with --movecount <n>.
+";
+	exit;
+    }
+
+    $pidp = open2($prog_out, $prog_in, $program);
+    $pids = open2($stable_out, $stable_in, $stable) if defined($stable);
+    print "program pid: $pidp\n" if $verbose;
+    print "stable pid:  $pids\n" if (defined($stable) and $verbose);
+
+    if (defined($randseed)) {
+        print $prog_in "set_random_seed $randseed\n";
+	eat_no_response($prog_out);
+    } else {
+        print $prog_in "get_random_seed\n";
+        $randseed = eat_one_line($prog_out);
+        print "random seed $randseed\n";
+    }
+
+    if (defined($stable)) {
+        $randseed =~ s/^= //smg;
+        print $stable_in "set_random_seed $randseed\n";
+        eat_no_response($stable_out);
+    }
+
+    for ($movenum = 1; $movenum <= $movecount + 1; $movenum++)
+    {
+        #load the file, check the statuses, next move.
+        my $lmove = $movenum + 1;#number to load up to
+	print "loading move $movenum\n" if $verbose;
+        print $prog_in "loadsgf $loadfile $lmove\n";
+	eat_no_response($prog_out);
+        if (!defined($noilcheck)) {
+            check_matcher($prog_in, $prog_out);
+            print "done checking status.\n" if ($verbose);
+        }
+
+        #do stable checks
+        if (defined($stable)) {
+            print $stable_in "loadsgf $loadfile $lmove\n";
+            $toplay = eat_one_line($stable_out);
+            $toplay =~ s/^=//smg;
+            $toplay =~ s/ //smg;
+	    if (!defined($color) or ($color eq $toplay)) {
+		print $prog_in "genmove_$toplay\n";
+		print $stable_in "genmove_$toplay\n";
+		$move = eat_move($prog_out);
+		$stable_move = eat_move($stable_out);
+		if ($move ne $stable_move and defined ($stable)) {
+		    print "At move $movenum, $toplay\:\n";
+		    print "Test version played   $move\n";
+		    print "Stable version played $stable_move\n";
+		    if ($verbose eq 2) {
+			print $prog_in "showboard\n";
+			print eat_response($prog_out);
+		    }
+		} else {
+		    print "$toplay plays $move\n" if $verbose;
+		}
+	    }
+        }
+    }
+
+    print "done reading sgf file\n" if ($verbose);
+    exit;
+}
+
+
+while ($games > 0) {
+    %match_hist = ();
+    $pidp = open2($prog_out, $prog_in, $program);
+    print "program pid: $pidp\n" if $verbose;
+
+    if (defined($stable)) {
+        $pids = open2($stable_out, $stable_in, $stable);
+        print "stable pid: $pids\n" if $verbose;
+    }
+
+    $sgffile = rename_sgffile($games, $sgffilename) if defined $sgffilename;
+
+    if ((defined $sgffilename) && !open(SGFFILEHANDLE, ">$sgffile")) {
+	printf("can't open $sgffile\n");
+	undef($sgffilename);
+    }
+
+    #set autoflushing for sgf file
+    SGFFILEHANDLE->autoflush(1);
+
+    if (!defined $komi) {
+        if ($handicap > 0) {
+	    $komi = 0.5;
+	}
+	else {
+	    $komi = 5.5;
+	}
+    }
+
+    print $prog_in  "boardsize $size\n";
+    eat_no_response($prog_out);
+    print $prog_in  "komi $komi\n";
+    eat_no_response($prog_out);
+
+    if (defined($stable)) {
+        print $stable_in "komi $komi\n";
+        eat_no_response($stable_out);
+        print $stable_in "boardsize $size\n";
+        eat_no_response($stable_out);
+    }
+
+    if (defined($randseed)) {
+        print $prog_in "set_random_seed $randseed\n";
+	eat_no_response($prog_out);
+    } else {
+        print $prog_in "get_random_seed\n";
+	$randseed = eat_one_line($prog_out);
+        $randseed =~ s/^= //smg;
+	print "random seed $randseed\n";
+    }
+
+    if (defined($stable)) {
+        print $stable_in "set_random_seed $randseed\n";
+        eat_no_response($stable_out);
+    }
+
+    undef $randseed;   #if more than one game, get a new seed next time.
+
+    print SGFFILEHANDLE "(;GM[1]FF[4]RU[Japanese]SZ[$size]HA[$handicap]KM[$komi]"
+	if defined $sgffilename;
+
+    my $pass = 0;
+    $move = "";
+
+    if ($handicap < 2) {
+	$toplay = "black";
+    }
+    else {
+	$toplay = "white";
+	print $prog_in "fixed_handicap $handicap\n";
+
+	$handicap_stones = eat_handicap($prog_out);
+	my $stable_stones = $handicap_stones;
+
+        if (defined($stable)) {
+	    print $stable_in "fixed_handicap $handicap\n";
+	    $stable_stones = eat_handicap($stable_out);
+	}
+
+	if ($stable_stones ne $handicap_stones) {
+	    print "Handicap discrepancy:\n";
+	    print "Test:   $handicap_stones\n";
+	    print "Stable: $stable_stones\n";
+	}
+
+	if (defined $sgffilename) {
+	    print SGFFILEHANDLE $handicap_stones;
+	}
+    }
+
+    $movenum = 1;
+    while ($pass < 2) {
+	print $prog_in "genmove_$toplay\n";
+	$move = eat_move($prog_out);
+
+	if (defined($stable)) {
+	    print $stable_in "genmove_$toplay\n" if defined($stable);
+	    $stable_move = eat_move($stable_out);
+	    print $stable_in "undo\n";
+	    eat_no_response($stable_out);
+	}
+
+	if ($move ne $stable_move and defined ($stable)) {
+	    print "At move $movenum, $toplay\:\n";
+	    print "Test version played   $move\n";
+	    print "Stable version played $stable_move\n";
+	    if ($verbose eq 2) {
+		print $prog_in "showboard\n";
+		print eat_response($prog_out);
+	    }
+	} else {
+	    print "$toplay plays $move\n" if $verbose;
+	}
+
+	$sgfmove = standard_to_sgf($move);
+	my $tpc = "B"; #toplay char
+	$tpc = "W" if ($toplay eq "white");
+	print SGFFILEHANDLE ";$tpc\[$sgfmove\]\n" if defined $sgffilename;
+
+	print $stable_in "$toplay $move\n" if defined($stable);
+	eat_no_response($stable_out) if defined($stable);
+
+	if ($toplay eq "black") {
+	    $toplay = "white";
+	} else {
+	    $toplay = "black";
+	}
+
+	if ($move =~ /PASS/i) {
+	    $pass++;
+	} else {
+	    $pass = 0;
+	}
+
+	if ($verbose > 2) {
+	    print $prog_in "showboard\n";
+	    eat_no_response($prog_out);
+	    if (defined($stable)) {
+	        print $stable_in "showboard\n";
+		eat_no_response($stable_out);
+	    }
+	}
+
+	check_matcher($prog_in, $prog_out) if !defined($noilcheck);
+	$movenum++;
+    }
+    print $prog_in "estimate_score\n";
+    $result = eat_score($prog_out);
+    if (defined($stable)) {
+        print $stable_in "estimate_score\n";
+	my $stable_result = eat_score($stable_out);
+	print "scoring discrepancy. Stable score: $stable_result.\n" if ($stable_result ne $result);
+    }
+
+    print "Result: $result\n";
+    print $prog_in "quit\n";
+    print $stable_in "quit\n" if defined($stable);
+
+    if (defined $sgffilename) {
+	print "sgf file: $sgffile\n";
+	print SGFFILEHANDLE ")";
+	close SGFFILEHANDLE;
+	$game_list{$sgffile} = $result;
+    }
+    $games-- if $games > 0;
+
+    #make sure gnugo dies correctly.
+    close $prog_in;
+    close $prog_out;
+    close $stable_in if defined($stable);
+    close $stable_out if defined($stable);
+    waitpid $pidp, 0;
+    waitpid $pids, 0;
+
+    print "games remaining: $games\n";
+}
+
+if (defined $sgffilename) {
+  my $index_out  = new FileHandle;
+  open ($index_out, "> " . index_name($sgffilename));
+  print $index_out
+"<HTML><HEAD><TITLE>game results</TITLE></HEAD>
+<BODY><H3>Game Results</H3>
+<H4>White: ".html_encode($program)."</H4>
+<H4>Black: ".html_encode($program)."</H4>
+<TABLE border=1>
+ <TR>
+  <TD>SGF file</TD>
+  <TD>Result</TD>
+ </TR>
+";
+ foreach (sort by_result keys(%game_list)) {
+    print $index_out "<TR><TD><A href=\"$_\">$_</A></TD>" .
+    		"<TD>".html_encode(game_result($_))."</TD></TR>\n";
+  }
+  print $index_out "</TABLE></BODY></HTML>\n";
+}
+
+exit;
+#all done here.
+
+sub game_result {
+  $_ = shift;
+  $_ = $game_list{$_};
+  #i.e.:  B+13.5 (upper bound: -13.5, lower: -13.5)|B+13.5 (upper bound: -13.5, lower: -13.5)
+  #Make sure that all 4 values are the same.  I've not seen them different yet.
+  #If they are ever different, need to improve the HTML output (now just -999) -
+  # an explanation of the score mismatch problem would be appropriate.
+  $_ =~ /^.*upper bound..([0-9+.\-]*)..lower..\1.\|.*upper bound..\1..lower..\1./;
+  if (defined($1)) {
+    return $1;
+  } else {
+    return -999;
+  }
+}
+
+sub by_result {
+  game_result($a) <=> game_result($b) || $a cmp $b;
+}
+
+sub html_encode {
+  #print shift;
+  my $r = shift;
+  $r =~ s/&/&amp;/g;
+  $r =~ s/</&lt;/g;
+  $r =~ s/>/&gt;/g;
+  return $r;
+}
+
+sub eat_no_response {
+    my $h = shift;
+
+# ignore empty lines
+    my $line = "";
+    while ($line eq "") {
+	chop($line = <$h>) or die "No response!";
+        $line =~ s/(\s|\n)*$//smg;
+    }
+}
+
+sub eat_response {
+    my $h = shift;
+    my $response = "";
+# ignore empty lines
+    my $line = "";
+    while ($line eq "") {
+	chop($line = <$h>) or die "No response!";
+        $line =~ s/(\s|\n)*$//smg;
+    }
+    while ($line ne "") {
+	$response = "$response$line\n";
+	chop($line = <$h>) or die "No response!";
+        $line =~ s/(\s|\n)*$//smg;
+    }
+    return $response;
+}
+
+sub eat_one_line {
+    my $h = shift;
+# ignore empty lines
+    my $line = "";
+    while ($line eq "") {
+	chop($line = <$h>) or die "No response!";
+        $line =~ s/(\s|\n)*$//smg;
+    }
+    return $line;
+}
+
+sub eat_move {
+    my $h = shift;
+# ignore empty lines
+    my $line = "";
+    while ($line eq "") {
+	if (!defined($line = <$h>)) {
+	    print SGFFILEHANDLE ")";
+	    close SGFFILEHANDLE;
+	    die "Engine crashed!\n";
+	}
+        $line =~ s/(\s|\n)*$//smg;
+    }
+    my ($equals, $move) = split(' ', $line, 2);
+    $line = <$h>;
+    defined($move) or confess "no move found: line was: '$line'";
+    return $move;
+}
+
+sub eat_handicap {
+    my $h = shift;
+    my $sgf_handicap = "AB";
+# ignore empty lines, die if process is gone
+    my $line = "";
+    while ($line eq "") {
+	chop($line = <$h>) or die "No response!";
+    }
+    @vertices = split(" ", $line);
+    foreach $vertex (@vertices) {
+	if (!($vertex eq "=")) {
+	    $vertex = standard_to_sgf($vertex);
+	    $sgf_handicap = "$sgf_handicap\[$vertex\]";
+	}
+    }
+    return "$sgf_handicap;";
+}
+
+sub eat_score {
+    my $h = shift;
+# ignore empty lines, die if process is gone
+    my $line = "";
+    while ($line eq "") {
+	chop($line = <$h>) or die "No response!";
+	$line =~ s/^\s*//msg;
+	$line =~ s/\s*$//msg;
+    }
+    $line =~ s/\s*$//;
+    my ($equals, $result) = split(' ', $line, 2);
+    $line = <$h>;
+    return $result;
+}
+
+sub standard_to_sgf {
+    for (@_) { confess "Yikes!" if !defined($_); }
+    for (@_) { tr/A-Z/a-z/ };
+    $_ = shift(@_);
+    /([a-z])([0-9]+)/;
+    return "tt" if $_ eq "pass";
+
+    $first = ord $1;
+    if ($first > 104) {
+	$first = $first - 1;
+    }
+    $first = chr($first);
+    $second = chr($size+1-$2+96);
+    return "$first$second";
+}
+
+sub rename_sgffile {
+    my $nogames = int shift(@_);
+    $_ = shift(@_);
+    s/\.sgf$//;
+    # Annoying to loose _001 on game #1 in multi-game set.
+    # Could record as an additional parameter.
+    # return "$_.sgf" if ($nogames == 1);
+    return sprintf("$_" . "_%03d.sgf", $nogames);
+}
+
+sub index_name {
+    $_ = shift;
+    s/\.sgf$//;
+    return $_ . "_index.html";
+}
+
+sub check_matcher {
+    #check for illegal transitions, and print things if they happen
+    my $in = shift;
+    my $out = shift;
+    my $line = "";
+    my $legality = "illegal";
+    my $vertex = " ";
+    my $new_status = " ";
+    my $old_status;
+    my $il_vertex = "";
+    my $il_move = "";
+
+    #send command
+    print $in "dragon_status\n";
+
+    while ($line eq "") {
+        chop($line = <$out>);
+	$line =~ s/^\s*//smg;
+	$line =~ s/\s*$//smg;
+    }
+
+    while ($line ne "")
+    {
+        print "parsing a line\n" if ($verbose);
+        $line =~ s/= //g;	#zap the "= " at the front of the response
+	$line =~ s/\n//g;	#zap newlines...
+	$line =~ s/://g;	#zap the :
+	print $line . "\n" if ($verbose);
+	($vertex, $new_status) = split(" ", $line);	#and split on spaces
+							#extra get trashed
+	$old_status = $match_hist{$vertex} if (exists($match_hist{$vertex}));
+
+	#debug output
+	if ($verbose > 1)
+	{
+	    print "Vertex: $vertex\n";
+	    print "Old Status: $old_status\n" if (exists($match_hist{$vertex}));
+	    print "New Status: $new_status\n";
+	}
+
+	#if it's new, we don't care
+	if (!exists($match_hist{$vertex})) {
+	    print "$vertex is new.\n" if ($verbose > 0);
+	    $match_hist{$vertex} = $new_status;
+	    next;
+	}
+
+	#ok, so it's old
+
+	$legality = "illegal";
+	if ($old_status eq "critical") {$legality = "legal"};
+	if ($new_status eq "critical") {$legality = "legal"};
+	if ($new_status eq "unknown") {$legality = "legal"};
+	if ($old_status eq "unknown") {
+	    if ($new_status eq "alive") {$legality = "legal";}
+	    if ($new_status eq "critical") {$legality = "legal";}
+	}
+	if ($old_status eq "alive" and $new_status eq "dead") {
+	    $legality = "killed";
+	}
+
+	if ($match_hist{$vertex} eq $new_status)
+	{
+	    #state didn't change -- valid result
+	    print "$vertex remained unchanged.\n" if ($verbose > 0);
+	} else
+	{
+	    #state changed
+	    if ($legality eq "legal")
+	    {
+	        #legal state change
+		if ($verbose > 1)
+		{
+		    print "Legal state change:\n";
+		    print "Games remaining: $games\n";
+		    print "Move: $movenum\n";
+		    print "Vertex: $vertex\n";
+		    print "Old Status: $old_status\n";
+		    print "New Status: $new_status\n";
+		    print "\n";
+		}
+	    } else
+	    {
+	        #illegal state change -- alive to dead or vice versa
+		print "Illegal state change:\n";
+		print "Games remaining: $games\n";
+		print "Move: $movenum\n";
+		print "Vertex: $vertex\n";
+		print "Old Status: $old_status\n";
+		print "New Status: $new_status\n";
+		print "\n";
+
+		#now print gtp output
+		#FIXME: doesn't work with --loadsgf because we don't have
+		#the move list available (it's hidden by using GTP loadsgf).
+		#FIXME: currently, only produces GTP output for one transition
+		#per move.  This is because we have to finish parsing the
+		#entire output of dragon_status before dealing with finding
+		#missed attacks.  Using arrays instead would fix it.
+		if ($legality eq "killed" and !defined($loadfile)) {
+        	    #The type we deal with now.
+		    #FIXME: check for defensive errors too.
+		    $il_move = $move;
+		    $il_vertex = $vertex;
+		}
+	    }
+	    $match_hist{$vertex} = $new_status;
+	}
+    } continue {
+        chop($line = <$out>);
+    }
+
+    if ($il_move ne "") {
+        print "attempting gtp output.\n";
+        #undo the move, check owl_does_attack
+        #and owl_attack, if they disagree,
+        #output a regression test.
+        print $in "undo\n";
+        eat_no_response($out);
+        my $oa_result = "";
+        my $oda_result = "";
+        print $in "owl_attack $il_vertex\n";
+        $oa_result = eat_one_line($out);
+        print "owl_attack $il_vertex\: $oa_result\n";
+        print $in "owl_does_attack $il_move $il_vertex\n";
+	$oda_result = eat_one_line($out);
+	print "owl_does_attack $il_move $il_vertex\: $oda_result\n";
+
+	#now try to do something with it
+	if ($oa_result eq "= 0" and $oda_result ne "= 0") {
+	    print "found a missed attack.\n\n";
+	    print "loadsgf $sgffile $movenum\n";
+	    print "owl_attack $il_vertex\n";
+	    print "#$oa_result\n";
+	    print "#? [1 $move]*\n\n";
+	} else {
+	    print "no missed attack found.\n\n";
+	}
+
+	#cancel the undo
+	my $last_played = "black";
+	if ($toplay eq "B") { $last_played = "white"; }
+	print $in "genmove_$last_played\n";
+	eat_move($out);
+    }
+
+    print "\n" if ($verbose > 0);
+}
+

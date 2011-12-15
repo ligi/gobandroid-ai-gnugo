@@ -1,0 +1,39 @@
+                       GTP Demonstration Programs
+
+twogtp    : a very useful perl script for playing two gtp processes together.
+
+twogtp-a  : alternative implementation
+
+twogtp.py : Python version of twogtp with additional features.
+
+twogtp.pike : Pike version of twogtp with even more features.
+
+2ptkgo.pl : Requires perltk and the next program. Plays two gtp processes 
+            together with graphical display
+
+ttgo.pm   : required by 2ptkgo.pl
+
+gtp2_6    : patch to GNU Go 2.6 allowing use of the gtp with a
+            limited command set sufficient to use twogtp.
+
+vanilla.c : Not useful by itself, this program shows how to spawn a gtp
+            process using fork() and exec(). It behaves just like GNU Go
+            and could be modified into any number of useful programs such
+            as a gtp/gmp mediator.
+
+metamachine.c : This program sits between a gtp controller and an
+                engine intercepting gtp commands and processing
+            them. When the gtp engine is gnugo, it gives an
+            alternative move generation scheme (though a weaker
+            engine).
+
+sgf2tst   : A perl script that produces a gtp test script from an sgf file
+
+matcher_check : A perl script that plays a gnugo process against itself,
+		watching for inconsistencies in the dragon_status field.
+		It flags these for further analysis by a person, and attempts
+		to generate regression tests from them.
+                
+gnugo.el   : This alternative to interface/gnugo.el can use XPM's to
+             display the board, but it is not finished. Use 
+             interface/gnugo.el instead.

@@ -1,0 +1,119 @@
+#! /usr/bin/perl -w
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# This program is distributed with GNU Go, a Go program.        #
+#                                                               #
+# Write gnugo@gnu.org or see http://www.gnu.org/software/gnugo/ #
+# for more information.                                         #
+#                                                               #
+# Copyright 1999, 2000, 2001 by the Free Software Foundation.   #
+#                                                               #
+# This program is free software; you can redistribute it and/or #
+# modify it under the terms of the GNU General Public License   #
+# as published by the Free Software Foundation - version 3,     #
+# or (at your option) any later version.                        #
+#                                                               #
+# This program is distributed in the hope that it will be       #
+# useful, but WITHOUT ANY WARRANTY; without even the implied    #
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR       #
+# PURPOSE.  See the GNU General Public License in file COPYING  #
+# for more details.                                             #
+#                                                               #
+# You should have received a copy of the GNU General Public     #
+# License along with this program; if not, write to the Free    #
+# Software Foundation, Inc., 51 Franklin Street, Fifth Floor,   #
+# Boston, MA 02111, USA.                                        #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+
+
+# This is a script which converts a game record annotated with test cases to
+# the *.tst format.
+# 
+# The script currently only processes SGF files without variations, but that's
+# quite useful enough when annotating games.
+#
+# All GTP commands are put into the SGF comment field.  The comment field is
+# interpretted in order:
+# 
+#  1) Lines starting with "#" are copied into the tst file.
+#  2) owl_attack, owl_defend, attack, defend, and eval_eye commands can 
+#     be put in such as:
+#         owl_attack A1
+#         1 G2
+#  3) Otherwise, a single line is interpreted as the correct answer, with
+#     the appropriate "gg_genmove" directive added automatically.
+# 
+# See regression/trevora.tst for examples. The sgf files for this test
+# are in regression/games/trevor/auto/a??.sgf
+
+use strict;
+use warnings;
+
+local $/;
+undef $/;
+
+my $autoprobnum = 100;
+my $increment = 10;
+
+while (<>) {
+  my $content = $_;
+  if ($content !~ /C\[/) {
+    print STDERR "Warning : $ARGV : No comments.\n";
+    next;
+  }
+
+  print "\n\n# $ARGV problems:\n\n";
+  
+  $content =~ s/^\(;//;
+  $content .= ';';
+  
+  my $DEBUG = 0;  
+  
+  my $i=0;
+  my $done=0;
+  while ($content =~ /(.*?);/sg  && ($done=1)) {  # for each node.
+    $i++;
+    my $node = $1;
+    print "CONTENT:'$content':CONTENT\n\n" if $DEBUG;
+    print "NODE:'$node':NODE\n\n" if $DEBUG;
+    next if $node !~ /C\[(.*)\]/s ;
+    my $comments = "";
+    my $command = "";
+    my $comment = $1;
+    my ($othercolor) = $node =~ /(W|B)\[/       or die "No W or B move here: $ARGV($i): $node";
+    while ($comment =~ /^(.*)$/mg) { # i.e. for each line of comment
+      my $line = $1;
+      $line =~ s/\s*$//;
+      $line =~ s/^\s*//;
+      if ($line =~ /^#/) {
+        $comments .= "$line\n";
+        next;
+      }
+      $command .= "loadsgf $ARGV $i\n";
+      my $probnum = $autoprobnum;
+      if ($line =~ /^([0-9]*)\s*((?:owl_attack|attack|owl_defend|defend|eval_eye).*)$/) {
+        if ($1 eq "") {
+          $probnum = $autoprobnum;
+        } else {
+          $probnum = $1;
+          $autoprobnum -= $increment;
+        }
+
+        $command .= "$probnum $2\n";  #ah, this line is a specific gtp command.
+        $comment =~ /^(.*)$/mg;          #read next line for answer.
+        $line = $1;
+        $line =~ s/\s*$//;
+        $line =~ s/^\s*//;
+      } else {
+        $command .= "$probnum gg_genmove " . ($othercolor eq 'B' ? 'white' : 'black') . "\n";
+      }
+      $autoprobnum += $increment;
+      $command .= "#? [$line]*\n";
+      print $command if $DEBUG;
+    }
+    print "$comments$command\n\n";
+  }
+  
+}
+
