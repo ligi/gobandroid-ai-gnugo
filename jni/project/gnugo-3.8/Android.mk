@@ -18,6 +18,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := gnuGo-3.8
 
+
 LOCAL_CFLAGS := -DHAVE_CONFIG_H \
 -I$(LOCAL_PATH) \
 -I$(LOCAL_PATH)/engine \
@@ -104,4 +105,14 @@ utils/gg_utils.c \
 utils/random.c \
 utils/winsocket.c
 
+
+ifeq ($(TARGET_ARCH_ABI),x86)
+	LOCAL_CFLAGS += -O3 -ffast-math -funroll-loops -msse3 -mfpmath=sse -mtune=atom
+else
+	#TODO find some cool optimizations also for ARM ;-)
+	LOCAL_CFLAGS += -O3
+endif
+
+
 include $(BUILD_SHARED_LIBRARY)
+
