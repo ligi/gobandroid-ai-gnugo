@@ -4,7 +4,8 @@ gen
 **/*.o
 **/*.a
 obj
-
+.settings/
+lint.xml
 jni/project/gnugo-3.8/COPYING
 jni/project/gnugo-3.8/Makefile
 jni/project/gnugo-3.8/config.log
