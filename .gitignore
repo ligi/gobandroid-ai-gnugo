@@ -1,9 +1,8 @@
-bin
+src/main/obj
+build
 libs
-gen
 **/*.o
 **/*.a
-obj
 .settings/
 lint.xml
 jni/project/gnugo-3.8/COPYING
