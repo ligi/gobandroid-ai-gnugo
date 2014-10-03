@@ -2,8 +2,8 @@ language: android
 android:
   components:
   - build-tools-20.0.0
-  - android-19
-  - sysimg-19
+  - android-20
+  - sysimg-20
   - add-on
   - extra
   licenses:
@@ -16,7 +16,7 @@ env:
   global:
   - ANDROID_SDK_VERSION="r23.0.2"
   matrix:
-  - ANDROID_SDKS=android-19,sysimg-19  ANDROID_TARGET=android-19  ANDROID_ABI=armeabi-v7a
+  - ANDROID_SDKS=android-20,sysimg-20  ANDROID_TARGET=android-20  ANDROID_ABI=armeabi-v7a
 
 notifications:
   email: true
