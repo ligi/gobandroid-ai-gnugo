@@ -1,0 +1,25 @@
+language: android
+android:
+  components:
+  - build-tools-20.0.0
+  - android-19
+  - sysimg-19
+  - add-on
+  - extra
+  licenses:
+  - android-sdk-preview-license-52d11cd2
+  - android-sdk-license-.+
+  - google-gdk-license-.+
+jdk: oraclejdk7
+
+env:
+  global:
+  - ANDROID_SDK_VERSION="r23.0.2"
+  matrix:
+  - ANDROID_SDKS=android-19,sysimg-19  ANDROID_TARGET=android-19  ANDROID_ABI=armeabi-v7a
+
+notifications:
+  email: true
+
+script:
+  ./gradlew clean build
