@@ -33,11 +33,10 @@ public class GnuGoService extends Service {
 	private IGnuGoService.Stub myRemoteServiceStub = new IGnuGoService.Stub() {
 	
 		@Override
-		public String processGTP(String command) throws RemoteException  {
+		public synchronized String processGTP(String command) throws RemoteException  {
 			return GnuGoConnection.playGTP(command);
 		}
 	};
 	
-
 	
 }
