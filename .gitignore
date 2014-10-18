@@ -5,15 +5,4 @@ libs
 **/*.a
 .settings/
 lint.xml
-jni/project/gnugo-3.8/COPYING
-jni/project/gnugo-3.8/Makefile
-jni/project/gnugo-3.8/config.log
-jni/project/gnugo-3.8/config.status
-jni/project/gnugo-3.8/engine/.deps/
-jni/project/gnugo-3.8/engine/Makefile
-jni/project/gnugo-3.8/interface/.deps/
-jni/project/gnugo-3.8/interface/.gitignore
-jni/project/gnugo-3.8/interface/Makefile
-jni/project/gnugo-3.8/stamp-h1
-jni/project/gnugo-3.8/utils/.deps/
-jni/project/gnugo-3.8/utils/Makefile
+
