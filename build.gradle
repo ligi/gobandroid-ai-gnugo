@@ -5,21 +5,21 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:0.13.2'
+        classpath 'com.android.tools.build:gradle:1.2.3'
     }
 }
 
-import org.apache.tools.ant.taskdefs.condition.Os
+import com.android.build.OutputFile
 
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 20
-    buildToolsVersion "20"
+    compileSdkVersion 22
+    buildToolsVersion "22.0.1"
 
     defaultConfig{
         minSdkVersion 16
-        targetSdkVersion 20
+        targetSdkVersion 22
         versionCode 101
         versionName "1.0.1"
     }
@@ -36,12 +36,12 @@ splits {
         }
     }
 
-   project.ext.versionCodes = ['armeabi':1, 'armeabi-v7a':2, 'arm64-v8a':3, 'mips':5, 'mips64':6, 'x86':8, 'x86_64':9] //versionCode digit for each supported ABI, with 64bit>32bit and x86>armeabi-*
+   project.ext.versionCodes = ['armeabi':1, 'armeabi-v7a':2, 'arm64-v8a':3, 'mips':5, 'mips64':6, 'x86':8, 'x86_64':9]
+
     android.applicationVariants.all { variant ->
-        // assign different version code for each output
         variant.outputs.each { output ->
             output.versionCodeOverride =
-                    project.ext.versionCodes.get(output.abiFilter, 0) * 1000000 + android.defaultConfig.versionCode
+                    project.ext.versionCodes.get(output.getFilter(OutputFile.ABI) , 0) * 1000000 + android.defaultConfig.versionCode
         }
     }
 
