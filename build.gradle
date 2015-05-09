@@ -17,7 +17,7 @@ android {
     compileSdkVersion 22
     buildToolsVersion "22.0.1"
 
-    defaultConfig{
+    defaultConfig {
         minSdkVersion 16
         targetSdkVersion 22
         versionCode 101
@@ -29,25 +29,25 @@ android {
         jni.srcDirs = [] //disable automatic ndk-build call
     }
 
-splits {
+    splits {
         abi {
             enable true // enable ABI split feature to create one APK per ABI
             universalApk true //generate an additional APK that targets all the ABIs
         }
     }
 
-   project.ext.versionCodes = ['armeabi':1, 'armeabi-v7a':2, 'arm64-v8a':3, 'mips':5, 'mips64':6, 'x86':8, 'x86_64':9]
+    project.ext.versionCodes = ['armeabi': 1, 'armeabi-v7a': 2, 'arm64-v8a': 3, 'mips': 5, 'mips64': 6, 'x86': 8, 'x86_64': 9]
 
     android.applicationVariants.all { variant ->
         variant.outputs.each { output ->
             output.versionCodeOverride =
-                    project.ext.versionCodes.get(output.getFilter(OutputFile.ABI) , 0) * 1000000 + android.defaultConfig.versionCode
+                    project.ext.versionCodes.get(output.getFilter(OutputFile.ABI), 0) * 1000000 + android.defaultConfig.versionCode
         }
     }
 
     // call regular ndk-build(.cmd) script from app directory
     task ndkBuild(type: Exec) {
-            commandLine 'ndk-build', '-C', file('src/main').absolutePath
+        commandLine 'ndk-build', '-C', file('src/main').absolutePath
     }
 
     tasks.withType(JavaCompile) {
