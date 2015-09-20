@@ -20,8 +20,8 @@ android {
     defaultConfig {
         minSdkVersion 16
         targetSdkVersion 23
-        versionCode 102
-        versionName "1.0.2"
+        versionCode 210
+        versionName "2.1.0"
 	archivesBaseName = "GobandroidAIGnuGo-$versionName"
     }
 
