@@ -4,5 +4,10 @@ libs
 **/*.o
 **/*.a
 .settings/
+.idea/
+.gradle/
 lint.xml
+local.properties
+gobandroid-ai-gnugo.iml
+
 
