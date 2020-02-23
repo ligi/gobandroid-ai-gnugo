@@ -52,15 +52,10 @@ android {
         }
     }
 
-    /*
-    // call regular ndk-build(.cmd)ol script from app directory
-    task ndkBuild(type: Exec) {
-        commandLine 'ndk-build', '-C', file('src/main').absolutePath
+    externalNativeBuild {
+        ndkBuild {
+            path file('src/main/jni/project/Android.mk')
+        }
     }
 
-
-    tasks.withType(JavaCompile) {
-        compileTask -> compileTask.dependsOn ndkBuild
-    }
-    */
 }

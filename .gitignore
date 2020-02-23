@@ -9,5 +9,4 @@ libs
 lint.xml
 local.properties
 gobandroid-ai-gnugo.iml
-
-
+.cxx
