@@ -7,11 +7,21 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    steps:
+    steps:       
     - uses: actions/checkout@v2
+    - name: Get GNUGo
+      run: |
+        git clone --depth=1 git://git.savannah.gnu.org/gnugo.git
+        cd gnugo
+        ./configure
+        make
+        make clean
+        cp -r --no-clobber ./ ../src/main/jni/project/gnugo-3.8
+        cd ..
+        rm -rf gnugo
     - name: set up JDK 1.8
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
     - name: Build with Gradle
-      run: sudo ./gradlew build
+      run: ./gradlew build
