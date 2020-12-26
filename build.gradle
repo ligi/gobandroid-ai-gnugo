@@ -23,6 +23,8 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 30
+    buildToolsVersion '30.0.2'
+    ndkVersion '21.3.6528147'
 
     defaultConfig {
         minSdkVersion 15
@@ -53,15 +55,10 @@ android {
         }
     }
 
-    /*
-    // call regular ndk-build(.cmd)ol script from app directory
-    task ndkBuild(type: Exec) {
-        commandLine 'ndk-build', '-C', file('src/main').absolutePath
+    externalNativeBuild {
+        ndkBuild {
+            path file('src/main/jni/project/Android.mk')
+        }
     }
 
-
-    tasks.withType(JavaCompile) {
-        compileTask -> compileTask.dependsOn ndkBuild
-    }
-    */
 }
