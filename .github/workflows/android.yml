@@ -25,4 +25,10 @@ jobs:
       with:
         java-version: 1.8
     - name: Build with Gradle
-      run: sudo ./gradlew build
+      run: sudo ./gradlew assemble
+    - uses: actions/upload-artifact@v2
+      with:
+        path: ./**/*.apk
+        if-no-files-found: warn       
+      
+

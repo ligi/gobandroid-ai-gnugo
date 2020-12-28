@@ -32,6 +32,11 @@ android {
         versionCode 212
         versionName "2.1.2"
         archivesBaseName = "GobandroidAIGnuGo-$versionName"
+        externalNativeBuild {
+            ndkBuild {
+                cFlags ("-Wno-constant-conversion")
+            }
+        }
     }
 
     sourceSets.main {
