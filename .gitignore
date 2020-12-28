@@ -8,6 +8,6 @@ libs
 .gradle/
 lint.xml
 local.properties
-gobandroid-ai-gnugo.iml
-
-
+*.iml
+.cxx
+release
