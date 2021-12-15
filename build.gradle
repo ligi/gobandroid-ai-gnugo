@@ -1,30 +1,28 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.1'
+        classpath 'com.android.tools.build:gradle:7.0.4'
     }
 }
 allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 }
 
 ext.versionCodes = ['armeabi-v7a': 2, 'arm64-v8a': 3, 'x86': 8, 'x86_64': 9]
-
-import com.android.build.OutputFile
 
 apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 30
     buildToolsVersion '30.0.2'
-    ndkVersion '21.3.6528147'
+    ndkVersion '23.1.7779620'
 
     defaultConfig {
         minSdkVersion 15
@@ -56,7 +54,7 @@ android {
     android.applicationVariants.all { variant ->
         variant.outputs.each { output ->
             output.versionCodeOverride =
-                    project.ext.versionCodes.get(output.getFilter(OutputFile.ABI), 0) * 1000000 + android.defaultConfig.versionCode
+                    project.ext.versionCodes.get(output.getFilter(com.android.build.OutputFile.ABI), 0) * 1000000 + android.defaultConfig.versionCode
         }
     }
 
