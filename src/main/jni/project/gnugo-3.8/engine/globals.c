@@ -163,6 +163,9 @@ struct vital_eye_points white_vital_points[BOARDMAX];
 struct surround_data  surroundings[MAX_SURROUND];
 int                   surround_pointer;
 
+int meaningless_black_moves[BOARDMAX];
+int meaningless_white_moves[BOARDMAX];
+
 int cutting_points[BOARDMAX];
 
 double slowest_time = 0.0;
